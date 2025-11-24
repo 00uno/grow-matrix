@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GrowOps Matrix Calendar v3.0 (Firebase)</title>
+  <style>
+    :root {
+      --bg-color: #000000;
+      --text-color: #00FF00;
+      --dim-text: #004400;
+      --highlight: #00CC00;
+      --warning: #FFFF00;
+      --danger: #FF0000;
+      --border-color: #003300;
+      --font-main: 'Courier New', Courier, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--font-main);
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      text-shadow: 0 0 2px var(--dim-text);
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-color);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border: 1px solid var(--text-color);
+    }
+
+    header {
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--text-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 20, 0, 0.9);
+      z-index: 10;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    /* Status Indicator */
+    .status-online {
+      color: #00FF00;
+      text-shadow: 0 0 5px #00FF00;
+      font-weight: bold;
+      font-size: 0.8rem;
+      margin-left: 20px;
+    }
+
+    .status-offline {
+      color: #555;
+      font-size: 0.8rem;
+      margin-left: 20px;
+    }
+
+    .config-area {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-left: auto;
+    }
+
+    input[type="date"] {
+      background: black;
+      color: var(--text-color);
+      border: 1px solid var(--text-color);
+      padding: 5px;
+      font-family: var(--font-main);
+      cursor: pointer;
+    }
+
+    /* Main Layout */
+    .main-container {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Calendar Section */
+    .calendar-section {
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 1px solid var(--text-color);
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+
+    .day-name {
+      text-align: center;
+      padding: 10px;
+      color: var(--highlight);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .day-cell {
+      border: 1px solid var(--border-color);
+      min-height: 100px;
+      padding: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .day-cell:hover {
+      background-color: rgba(0, 255, 0, 0.1);
+      box-shadow: 0 0 10px var(--dim-text);
+    }
+
+    .day-cell.selected {
+      background-color: rgba(0, 255, 0, 0.2);
+      border-color: var(--text-color);
+      box-shadow: inset 0 0 15px var(--dim-text);
+    }
+
+    .day-cell.has-data {
+      border: 2px solid var(--text-color);
+    }
+
+    .day-cell.today {
+      background-color: rgba(0, 50, 0, 0.5);
+    }
+
+    .date-number {
+      font-weight: bold;
+    }
+
+    .plant-age {
+      font-size: 0.8rem;
+      color: var(--highlight);
+      align-self: flex-end;
+    }
+
+    /* Data Indicators */
+    .data-indicators {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 0.7em;
+      width: 100%;
+    }
+
+    .ind-water {
+      color: #00FFFF;
+    }
+
+    .ind-nutes {
+      color: #00FF00;
+      font-weight: bold;
+    }
+
+    .ind-lux {
+      color: #FFFF00;
+    }
+
+    .ind-notes {
+      color: #AAAAAA;
+    }
+
+    /* Control Panel */
+    .control-panel {
+      padding: 20px;
+      background: rgba(0, 10, 0, 0.95);
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      overflow-y: auto;
+    }
+
+    .panel-header {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+    }
+
+    .panel-title {
+      font-size: 1.2rem;
+      margin-bottom: 5px;
+    }
+
+    /* Mission Briefing */
+    .mission-briefing {
+      background: rgba(0, 40, 0, 0.3);
+      border: 1px dashed var(--text-color);
+      padding: 10px;
+      font-size: 0.85rem;
+    }
+
+    .mission-briefing h3 {
+      margin: 0 0 5px 0;
+      color: var(--highlight);
+      text-transform: uppercase;
+      font-size: 0.9rem;
+      border-bottom: 1px solid var(--dim-text);
+    }
+
+    .mission-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 3px;
+    }
+
+    /* Lux Analyzer */
+    .lux-analyzer {
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      background: rgba(0, 20, 0, 0.5);
+    }
+
+    .lux-status {
+      font-weight: bold;
+      margin-top: 5px;
+      font-size: 0.8rem;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    .status-low {
+      color: var(--warning);
+    }
+
+    .status-high {
+      color: var(--danger);
+    }
+
+    .status-optimal {
+      color: var(--text-color);
+    }
+
+    /* Controls */
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .control-group label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .input-wrapper span {
+      font-size: 0.7rem;
+      color: var(--dim-text);
+      margin-bottom: 2px;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    textarea {
+      background: black;
+      color: var(--text-color);
+      border: 1px solid var(--text-color);
+      padding: 8px;
+      font-family: var(--font-main);
+      width: 100%;
+    }
+
+    input[type="number"]:focus,
+    input[type="text"]:focus,
+    textarea:focus {
+      outline: none;
+      box-shadow: 0 0 5px var(--highlight);
+    }
+
+    button {
+      background: black;
+      color: var(--text-color);
+      border: 1px solid var(--text-color);
+      padding: 10px;
+      font-family: var(--font-main);
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: var(--text-color);
+      color: black;
+      box-shadow: 0 0 15px var(--text-color);
+    }
+
+    button.save-btn {
+      margin-top: auto;
+      font-weight: bold;
+      font-size: 1.1rem;
+      padding: 15px;
+    }
+
+    input[type="checkbox"] {
+      accent-color: var(--text-color);
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .water-counter {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Alerts */
+    .alert-blink {
+      animation: blink 1s infinite;
+      color: var(--danger);
+      font-weight: bold;
+      text-align: center;
+      margin-top: 5px;
+      font-size: 0.8rem;
+      display: none;
+    }
+
+    @keyframes blink {
+      0% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    /* Matrix Rain Canvas */
+    #matrix-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      opacity: 0.1;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="matrix-bg"></canvas>
+
+  <header>
+    <h1>GrowOps v3.0</h1>
+    <span id="db-status" class="status-offline">[ FIREBASE: INIT... ]</span>
+    <div class="config-area">
+      <label>GERMINATION DATE:</label>
+      <input type="date" id="germination-date">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <!-- Calendar Section -->
+    <section class="calendar-section">
+      <div class="calendar-header">
+        <button id="prev-month">&lt;</button>
+        <span id="current-month-display">LOADING...</span>
+        <button id="next-month">&gt;</button>
+      </div>
+      <div class="calendar-grid" id="calendar-grid">
+        <!-- Generated by JS -->
+      </div>
+    </section>
+
+    <!-- Control Panel -->
+    <section class="control-panel" id="control-panel">
+      <div class="panel-header">
+        <div class="panel-title" id="panel-date">SELECT A DATE</div>
+        <div id="panel-age">Plant Age: --</div>
+      </div>
+
+      <!-- Mission Briefing (Knowledge Engine) -->
+      <div class="mission-briefing" id="mission-briefing" style="display:none;">
+        <h3>MISSION BRIEFING</h3>
+        <div class="mission-item"><span>TARGET TEMP:</span> <span id="target-temp">--</span></div>
+        <div class="mission-item"><span>TARGET RH:</span> <span id="target-rh">--</span></div>
+        <div class="mission-item"><span>LIGHT:</span> <span id="target-light">--</span></div>
+        <div class="mission-item"><span>NUTRIENTS:</span> <span id="target-nutes">--</span></div>
+      </div>
+
+      <!-- Lux Analyzer -->
+      <div class="control-group lux-analyzer">
+        <label>LUX ANALYZER</label>
+        <input type="number" id="lux-input" placeholder="ENTER CURRENT LUX READING">
+        <div id="lux-status" class="lux-status"></div>
+      </div>
+
+      <!-- Environmental Inputs -->
+      <div class="control-group">
+        <label>ENVIRONMENT LOG</label>
+        <div class="input-row">
+          <div class="input-wrapper">
+            <span>TEMP (°C)</span>
+            <input type="number" id="temp-input" placeholder="24">
+          </div>
+          <div class="input-wrapper">
+            <span>RH (%)</span>
+            <input type="number" id="rh-input" placeholder="60">
+          </div>
+        </div>
+        <div id="param-alert" class="alert-blink">⚠ PARAMETER DEVIATION ⚠</div>
+      </div>
+
+      <!-- Actions -->
+      <div class="control-group">
+        <label>WATERING (L)</label>
+        <div class="water-counter">
+          <button id="add-water">+0.5L</button>
+          <span id="water-display">0.0 L</span>
+          <button id="reset-water" style="font-size: 0.8rem; padding: 5px;">R</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="root-stimulator">
+          ROOT STIMULATOR
+        </label>
+        <label>
+          <input type="checkbox" id="fertilizer">
+          NUTRIENTS / FERT
+        </label>
+      </div>
+
+      <div class="control-group">
+        <label>NOTES</label>
+        <textarea id="daily-notes" placeholder="Observations..."></textarea>
+      </div>
+
+      <button class="save-btn" id="save-btn">SAVE DATA [CLOUD]</button>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    /**
+     * GrowOps Matrix Calendar v3.0
+     * Features: Knowledge Engine, Lux Analyzer, Parameter Validation, Grid Data Visualization, Firebase Sync
+     */
+
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyBzjkda5C3__QB8jglOQK79HDfvxVZ8iGQ",
+      authDomain: "grow-matrix.firebaseapp.com",
+      databaseURL: "https://grow-matrix-default-rtdb.firebaseio.com",
+      projectId: "grow-matrix",
+      storageBucket: "grow-matrix.firebasestorage.app",
+      messagingSenderId: "1004789173992",
+      appId: "1:1004789173992:web:0aa39431f84cd4937c435d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- KNOWLEDGE ENGINE (The Source of Truth) ---
+    const GROW_GUIDE = [
+      {
+        minDay: 0, maxDay: 7,
+        phase: "Seedling",
+        temp: { min: 22, max: 26 },
+        rh: { min: 75, max: 85 },
+        light: "LEC >50cm or Dimmed",
+        nutes: "ROOT STIM ONLY. NO FERT.",
+        water: "Spray/Mist"
+      },
+      {
+        minDay: 8, maxDay: 21,
+        phase: "Early Veg",
+        temp: { min: 24, max: 28 },
+        rh: { min: 65, max: 75 },
+        light: "Increase Intensity",
+        nutes: "Start Mild Nitrogen",
+        water: "Normal"
+      },
+      {
+        minDay: 22, maxDay: 999,
+        phase: "Late Veg / Pre-Flower",
+        temp: { min: 24, max: 28 },
+        rh: { min: 55, max: 65 },
+        light: "Full Power",
+        nutes: "Veg Nutrients",
+        water: "Normal"
+      }
+    ];
+
+    const LUX_DATA = [
+      { minDay: 0, maxDay: 10, min: 3500, max: 10000, ideal: 7000, label: "SEEDLING" },
+      { minDay: 11, maxDay: 28, min: 15000, max: 40000, ideal: 30000, label: "VEG" },
+      { minDay: 29, maxDay: 999, min: 45000, max: 75000, ideal: 60000, label: "FLOWER" }
+    ];
+
+    // --- State Management ---
+    const STATE = {
+      germinationDate: null,
+      currentViewDate: new Date(),
+      selectedDate: null, // String YYYY-MM-DD
+      data: {} // Key: YYYY-MM-DD, Value: { water, root, fert, notes, temp, rh, lux }
+    };
+
+    // --- DOM Elements ---
+    const els = {
+      germinationInput: document.getElementById('germination-date'),
+      grid: document.getElementById('calendar-grid'),
+      monthDisplay: document.getElementById('current-month-display'),
+      prevBtn: document.getElementById('prev-month'),
+      nextBtn: document.getElementById('next-month'),
+      dbStatus: document.getElementById('db-status'),
+
+      // Panel
+      panelDate: document.getElementById('panel-date'),
+      panelAge: document.getElementById('panel-age'),
+
+      // Mission Briefing
+      missionBriefing: document.getElementById('mission-briefing'),
+      targetTemp: document.getElementById('target-temp'),
+      targetRh: document.getElementById('target-rh'),
+      targetLight: document.getElementById('target-light'),
+      targetNutes: document.getElementById('target-nutes'),
+
+      // Inputs
+      luxInput: document.getElementById('lux-input'),
+      luxStatus: document.getElementById('lux-status'),
+      tempInput: document.getElementById('temp-input'),
+      rhInput: document.getElementById('rh-input'),
+      paramAlert: document.getElementById('param-alert'),
+
+      waterDisplay: document.getElementById('water-display'),
+      addWaterBtn: document.getElementById('add-water'),
+      resetWaterBtn: document.getElementById('reset-water'),
+      rootCheck: document.getElementById('root-stimulator'),
+      fertCheck: document.getElementById('fertilizer'),
+      notes: document.getElementById('daily-notes'),
+      saveBtn: document.getElementById('save-btn')
+    };
+
+    // --- Initialization ---
+    function init() {
+      setupFirebaseListener();
+      renderCalendar();
+      setupEventListeners();
+      setupMatrixRain();
+
+      // Select today by default
+      selectDate(getFormattedDate(new Date()));
+    }
+
+    // --- Data Persistence (Firebase) ---
+    function setupFirebaseListener() {
+      const dbRef = ref(db, 'growData');
+      onValue(dbRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          STATE.germinationDate = data.germinationDate || null;
+          STATE.data = data.data || {};
+
+          // Update UI from external changes
+          if (STATE.germinationDate) els.germinationInput.value = STATE.germinationDate;
+          renderCalendar();
+          updatePanel();
+        }
+
+        // Update Status
+        els.dbStatus.innerText = "[ FIREBASE: ONLINE ]";
+        els.dbStatus.className = "status-online";
+      }, (error) => {
+        console.error(error);
+        els.dbStatus.innerText = "[ FIREBASE: ERROR ]";
+        els.dbStatus.className = "status-offline";
+        els.dbStatus.style.color = "red";
+      });
+    }
+
+    function saveData() {
+      STATE.germinationDate = els.germinationInput.value;
+      const payload = {
+        germinationDate: STATE.germinationDate,
+        data: STATE.data
+      };
+
+      set(ref(db, 'growData'), payload)
+        .then(() => {
+          // Visual feedback
+          const originalText = els.saveBtn.innerText;
+          els.saveBtn.innerText = "SAVED [CLOUD]!";
+          els.saveBtn.style.background = "#00FF00";
+          els.saveBtn.style.color = "black";
+          setTimeout(() => {
+            els.saveBtn.innerText = originalText;
+            els.saveBtn.style.background = "";
+            els.saveBtn.style.color = "";
+          }, 1000);
+        })
+        .catch((error) => {
+          console.error("Save failed", error);
+          alert("ERROR SAVING TO CLOUD");
+        });
+    }
+
+    // --- Calendar Logic ---
+    function renderCalendar() {
+      els.grid.innerHTML = '';
+
+      const year = STATE.currentViewDate.getFullYear();
+      const month = STATE.currentViewDate.getMonth();
+
+      const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+      els.monthDisplay.innerText = `${monthNames[month]} ${year}`;
+
+      const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+      days.forEach(d => {
+        const div = document.createElement('div');
+        div.className = 'day-name';
+        div.innerText = d;
+        els.grid.appendChild(div);
+      });
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startDayIndex = firstDay.getDay();
+
+      for (let i = 0; i < startDayIndex; i++) {
+        const div = document.createElement('div');
+        div.className = 'day-cell';
+        div.style.opacity = '0.3';
+        div.style.cursor = 'default';
+        els.grid.appendChild(div);
+      }
+
+      const todayStr = getFormattedDate(new Date());
+
+      for (let i = 1; i <= daysInMonth; i++) {
+        const dateObj = new Date(year, month, i);
+        const dateStr = getFormattedDate(dateObj);
+        const dayData = STATE.data[dateStr];
+
+        const cell = document.createElement('div');
+        cell.className = 'day-cell';
+        if (dateStr === todayStr) cell.classList.add('today');
+        if (dateStr === STATE.selectedDate) cell.classList.add('selected');
+        if (dayData) cell.classList.add('has-data');
+
+        const numDiv = document.createElement('div');
+        numDiv.className = 'date-number';
+        numDiv.innerText = i;
+        cell.appendChild(numDiv);
+
+        // Plant Age
+        if (STATE.germinationDate) {
+          const age = calculateAge(STATE.germinationDate, dateStr);
+          if (age >= 0) {
+            const ageDiv = document.createElement('div');
+            ageDiv.className = 'plant-age';
+            ageDiv.innerText = `Day ${age}`;
+            cell.appendChild(ageDiv);
+          }
+        }
+
+        // Data Indicators (Grid Data Visualization)
+        if (dayData) {
+          const indicatorsDiv = document.createElement('div');
+          indicatorsDiv.className = 'data-indicators';
+
+          // Water
+          if (dayData.water > 0) {
+            const div = document.createElement('div');
+            div.className = 'ind-water';
+            div.innerText = `💧 ${dayData.water.toFixed(1)}L`;
+            indicatorsDiv.appendChild(div);
+          }
+
+          // Nutrients (Root or Fert)
+          if (dayData.root || dayData.fert) {
+            const div = document.createElement('div');
+            div.className = 'ind-nutes';
+            let text = '';
+            if (dayData.root) text += '💊 '; // Root Stim
+            if (dayData.fert) text += '[CHEM]'; // Fert
+            div.innerText = text;
+            indicatorsDiv.appendChild(div);
+          }
+
+          // Lux
+          if (dayData.lux) {
+            const div = document.createElement('div');
+            div.className = 'ind-lux';
+            div.innerText = `⚡ ${dayData.lux}`;
+            indicatorsDiv.appendChild(div);
+          }
+
+          // Notes
+          if (dayData.notes && dayData.notes.trim() !== '') {
+            const div = document.createElement('div');
+            div.className = 'ind-notes';
+            div.innerText = '[...]';
+            indicatorsDiv.appendChild(div);
+          }
+
+          cell.appendChild(indicatorsDiv);
+        }
+
+        cell.onclick = () => selectDate(dateStr);
+        els.grid.appendChild(cell);
+      }
+    }
+
+    function calculateAge(germDateStr, targetDateStr) {
+      const germ = new Date(germDateStr);
+      const target = new Date(targetDateStr);
+      germ.setHours(0, 0, 0, 0);
+      target.setHours(0, 0, 0, 0);
+      const diffTime = target - germ;
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    function getFormattedDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    // --- Panel & Logic ---
+    function selectDate(dateStr) {
+      STATE.selectedDate = dateStr;
+      renderCalendar();
+      updatePanel();
+    }
+
+    function updatePanel() {
+      if (!STATE.selectedDate) return;
+
+      els.panelDate.innerText = `SELECTED: ${STATE.selectedDate}`;
+
+      let age = -1;
+      if (STATE.germinationDate) {
+        age = calculateAge(STATE.germinationDate, STATE.selectedDate);
+        els.panelAge.innerText = age >= 0 ? `Plant Age: Day ${age}` : "Pre-Germination";
+      } else {
+        els.panelAge.innerText = "Plant Age: --";
+      }
+
+      // 1. Mission Briefing Logic
+      if (age >= 0) {
+        els.missionBriefing.style.display = 'block';
+        const guide = GROW_GUIDE.find(g => age >= g.minDay && age <= g.maxDay) || GROW_GUIDE[GROW_GUIDE.length - 1];
+
+        els.targetTemp.innerText = `${guide.temp.min}-${guide.temp.max}°C`;
+        els.targetRh.innerText = `${guide.rh.min}-${guide.rh.max}%`;
+        els.targetLight.innerText = guide.light;
+        els.targetNutes.innerText = guide.nutes;
+      } else {
+        els.missionBriefing.style.display = 'none';
+      }
+
+      // 2. Load Data
+      const dayData = STATE.data[STATE.selectedDate] || {
+        water: 0, root: false, fert: false, notes: '',
+        temp: '', rh: '', lux: ''
+      };
+
+      els.waterDisplay.innerText = `${(dayData.water || 0).toFixed(1)} L`;
+      els.rootCheck.checked = dayData.root || false;
+      els.fertCheck.checked = dayData.fert || false;
+      els.notes.value = dayData.notes || '';
+      els.tempInput.value = dayData.temp || '';
+      els.rhInput.value = dayData.rh || '';
+      els.luxInput.value = dayData.lux || '';
+
+      // 3. Run Validations
+      validateEnvironment(age);
+      validateLux(age);
+    }
+
+    function validateEnvironment(age) {
+      if (age < 0) {
+        els.paramAlert.style.display = 'none';
+        return;
+      }
+
+      const temp = parseFloat(els.tempInput.value);
+      const rh = parseFloat(els.rhInput.value);
+
+      if (isNaN(temp) && isNaN(rh)) {
+        els.paramAlert.style.display = 'none';
+        return;
+      }
+
+      const guide = GROW_GUIDE.find(g => age >= g.minDay && age <= g.maxDay) || GROW_GUIDE[GROW_GUIDE.length - 1];
+      let deviation = false;
+
+      if (!isNaN(temp) && (temp < guide.temp.min || temp > guide.temp.max)) deviation = true;
+      if (!isNaN(rh) && (rh < guide.rh.min || rh > guide.rh.max)) deviation = true;
+
+      els.paramAlert.style.display = deviation ? 'block' : 'none';
+    }
+
+    function validateLux(age) {
+      const val = parseFloat(els.luxInput.value);
+      const statusEl = els.luxStatus;
+      statusEl.className = 'lux-status';
+      statusEl.innerText = '';
+
+      if (isNaN(val) || age < 0) return;
+
+      const luxData = LUX_DATA.find(d => age >= d.minDay && age <= d.maxDay) || LUX_DATA[LUX_DATA.length - 1];
+
+      if (val < luxData.min) {
+        statusEl.innerText = "UNDERSATURATED. STRETCH RISK. INCREASE POWER.";
+        statusEl.classList.add('status-low');
+      } else if (val > luxData.max) {
+        statusEl.innerText = "CRITICAL RADIATION. BURN RISK. DIM LIGHTS.";
+        statusEl.classList.add('status-high');
+      } else {
+        statusEl.innerText = "OPTIMAL PHOTON FLUX. PHOTOSYNTHESIS MAXIMIZED.";
+        statusEl.classList.add('status-optimal');
+      }
+    }
+
+    function updateCurrentDayData(key, value) {
+      if (!STATE.selectedDate) return;
+
+      if (!STATE.data[STATE.selectedDate]) {
+        STATE.data[STATE.selectedDate] = { water: 0, root: false, fert: false, notes: '', temp: '', rh: '', lux: '' };
+      }
+
+      STATE.data[STATE.selectedDate][key] = value;
+    }
+
+    // --- Event Listeners ---
+    function setupEventListeners() {
+      els.prevBtn.onclick = () => {
+        STATE.currentViewDate.setMonth(STATE.currentViewDate.getMonth() - 1);
+        renderCalendar();
+      };
+      els.nextBtn.onclick = () => {
+        STATE.currentViewDate.setMonth(STATE.currentViewDate.getMonth() + 1);
+        renderCalendar();
+      };
+
+      els.germinationInput.onchange = (e) => {
+        STATE.germinationDate = e.target.value;
+        saveData();
+        renderCalendar();
+        updatePanel();
+      };
+
+      els.addWaterBtn.onclick = () => {
+        if (!STATE.selectedDate) return;
+        if (!STATE.data[STATE.selectedDate]) updateCurrentDayData('water', 0);
+
+        STATE.data[STATE.selectedDate].water += 0.5;
+        els.waterDisplay.innerText = `${STATE.data[STATE.selectedDate].water.toFixed(1)} L`;
+      };
+
+      els.resetWaterBtn.onclick = () => {
+        if (!STATE.selectedDate) return;
+        if (STATE.data[STATE.selectedDate]) {
+          STATE.data[STATE.selectedDate].water = 0;
+          els.waterDisplay.innerText = "0.0 L";
+        }
+      };
+
+      els.rootCheck.onchange = (e) => updateCurrentDayData('root', e.target.checked);
+      els.fertCheck.onchange = (e) => updateCurrentDayData('fert', e.target.checked);
+      els.notes.oninput = (e) => updateCurrentDayData('notes', e.target.value);
+
+      // New Inputs
+      els.tempInput.oninput = (e) => {
+        updateCurrentDayData('temp', e.target.value);
+        if (STATE.germinationDate) validateEnvironment(calculateAge(STATE.germinationDate, STATE.selectedDate));
+      };
+      els.rhInput.oninput = (e) => {
+        updateCurrentDayData('rh', e.target.value);
+        if (STATE.germinationDate) validateEnvironment(calculateAge(STATE.germinationDate, STATE.selectedDate));
+      };
+      els.luxInput.oninput = (e) => {
+        updateCurrentDayData('lux', e.target.value);
+        if (STATE.germinationDate) validateLux(calculateAge(STATE.germinationDate, STATE.selectedDate));
+      };
+
+      els.saveBtn.onclick = saveData;
+    }
+
+    // --- Visuals: Matrix Rain ---
+    function setupMatrixRain() {
+      const canvas = document.getElementById('matrix-bg');
+      const ctx = canvas.getContext('2d');
+
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const chars = '01';
+      const fontSize = 14;
+      const columns = canvas.width / fontSize;
+      const drops = [];
+
+      for (let x = 0; x < columns; x++) drops[x] = 1;
+
+      function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#0F0';
+        ctx.font = fontSize + 'px monospace';
+
+        for (let i = 0; i < drops.length; i++) {
+          const text = chars.charAt(Math.floor(Math.random() * chars.length));
+          ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+          if (drops[i] * fontSize > canvas.height && Math.random() > 0.975)
+            drops[i] = 0;
+
+          drops[i]++;
+        }
+      }
+      setInterval(draw, 50);
+
+      window.onresize = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      };
+    }
+
+    init();
+
+  </script>
+</body>
+
+</html>
