@@ -1,939 +1,343 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GrowOps v5.0 - Command Center</title>
-  <style>
-    :root {
-      --bg: #000;
-      --text: #0F0;
-      --dim: #040;
-      --highlight: #0C0;
-      --warn: #FF0;
-      --danger: #F00;
-      --border: #030;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GROWOPS V5.0 | MATRIX NODE</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --matrix-green: #00FF41; --dark-bg: #0D0208; --dim-green: #008F11; --alert-red: #FF0055; }
+        body { background-color: black; color: var(--matrix-green); font-family: 'Courier New', Courier, monospace; margin: 0; padding: 20px; overflow-x: hidden; }
+        
+        /* Matrix Header */
+        header { border-bottom: 2px solid var(--matrix-green); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h1 { margin: 0; text-shadow: 0 0 5px var(--matrix-green); letter-spacing: 2px; }
+        .status { font-size: 12px; border: 1px solid var(--matrix-green); padding: 5px 10px; }
+        
+        /* Layout */
+        .container { display: grid; grid-template-columns: 3fr 1fr; gap: 20px; height: 85vh; }
+        
+        /* Calendar Grid */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: var(--dim-green); border: 1px solid var(--matrix-green); }
+        .day-cell { background: black; min-height: 100px; padding: 5px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .day-cell:hover { background: #001100; box-shadow: inset 0 0 10px var(--matrix-green); }
+        .day-number { font-weight: bold; position: absolute; top: 5px; left: 5px; }
+        .day-data { margin-top: 25px; font-size: 10px; line-height: 1.4; }
+        .day-data div { margin-bottom: 2px; }
+        
+        /* Right Panel */
+        .panel { border-left: 2px solid var(--matrix-green); padding-left: 20px; display: flex; flex-direction: column; gap: 20px; }
+        .panel-box { border: 1px solid var(--dim-green); padding: 10px; }
+        .panel-title { background: var(--dim-green); color: black; padding: 2px 5px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
+        
+        /* Offline Sync Box */
+        textarea.json-input { width: 100%; height: 100px; background: #001100; color: var(--matrix-green); border: 1px solid var(--matrix-green); font-family: monospace; font-size: 10px; resize: none; }
+        button.btn-matrix { background: black; color: var(--matrix-green); border: 1px solid var(--matrix-green); padding: 10px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 5px; text-transform: uppercase; }
+        button.btn-matrix:hover { background: var(--matrix-green); color: black; }
 
-    * {
-      box-sizing: border-box;
-    }
+        /* Live Telemetry */
+        #live-telemetry { font-size: 24px; text-align: center; border: 1px solid var(--matrix-green); padding: 15px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 5px var(--dim-green); } 50% { box-shadow: 0 0 15px var(--matrix-green); } 100% { box-shadow: 0 0 5px var(--dim-green); } }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Courier New', monospace;
-      margin: 0;
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: var(--bg);
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border: 1px solid var(--text);
-    }
-
-    header {
-      padding: 10px 20px;
-      border-bottom: 1px solid var(--text);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(0, 20, 0, 0.9);
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 1.5rem;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-    }
-
-    .status-online {
-      color: var(--text);
-      text-shadow: 0 0 5px var(--text);
-      font-weight: bold;
-      margin-left: 20px;
-    }
-
-    .status-offline {
-      color: #555;
-      margin-left: 20px;
-    }
-
-    .config-area {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-left: auto;
-    }
-
-    input[type="date"] {
-      background: black;
-      color: var(--text);
-      border: 1px solid var(--text);
-      padding: 5px;
-      font-family: inherit;
-    }
-
-    .calendar-section {
-      padding: 20px;
-      overflow-y: auto;
-      height: 100%;
-    }
-
-    .calendar-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      font-size: 1.2rem;
-      font-weight: bold;
-    }
-
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
-    }
-
-    .day-name {
-      text-align: center;
-      padding: 10px;
-      color: var(--highlight);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .day-cell {
-      border: 2px solid var(--border);
-      min-height: 100px;
-      padding: 5px;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .day-cell:hover {
-      background: rgba(0, 255, 0, 0.1);
-      box-shadow: 0 0 10px var(--dim);
-    }
-
-    .day-cell.today {
-      background: rgba(0, 50, 0, 0.5);
-    }
-
-    .date-number {
-      font-weight: bold;
-      font-size: 0.9rem;
-    }
-
-    .plant-age {
-      font-size: 0.7rem;
-      color: var(--highlight);
-      margin-top: 2px;
-    }
-
-    .data-summary {
-      margin-top: 5px;
-      font-size: 9px;
-      line-height: 1.3;
-      flex-grow: 1;
-    }
-
-    .data-summary div {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 1px;
-    }
-
-    .env {
-      color: #aaa;
-    }
-
-    .water {
-      color: #0ff;
-    }
-
-    .lux {
-      color: #ff0;
-    }
-
-    .notes {
-      color: #0f0;
-    }
-
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.85);
-      z-index: 999;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal-overlay.active {
-      display: flex;
-    }
-
-    .data-modal {
-      background: black;
-      border: 2px solid var(--text);
-      box-shadow: 0 0 30px var(--text);
-      width: 90%;
-      max-width: 600px;
-      max-height: 90vh;
-      overflow-y: auto;
-      padding: 20px;
-    }
-
-    .modal-header {
-      font-size: 1.3rem;
-      font-weight: bold;
-      margin-bottom: 15px;
-      text-transform: uppercase;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 10px;
-    }
-
-    .modal-section {
-      margin-bottom: 15px;
-    }
-
-    .modal-section label {
-      display: block;
-      margin-bottom: 5px;
-      font-size: 0.85rem;
-      color: var(--highlight);
-    }
-
-    .input-row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .input-wrapper {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .input-wrapper span {
-      font-size: 0.75rem;
-      color: var(--dim);
-      margin-bottom: 3px;
-    }
-
-    input[type="number"],
-    input[type="text"],
-    textarea {
-      background: black;
-      color: var(--text);
-      border: 1px solid var(--text);
-      padding: 8px;
-      font-family: inherit;
-      width: 100%;
-      font-size: 0.9rem;
-    }
-
-    input[type="number"]:focus,
-    input[type="text"]:focus,
-    textarea:focus {
-      outline: none;
-      box-shadow: 0 0 5px var(--highlight);
-    }
-
-    textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
-
-    .vpd-display {
-      padding: 10px;
-      border: 1px solid var(--border);
-      text-align: center;
-      font-weight: bold;
-      font-size: 1rem;
-      margin-top: 5px;
-    }
-
-    .water-counter {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    input[type="checkbox"] {
-      accent-color: var(--text);
-      width: 18px;
-      height: 18px;
-    }
-
-    .checkbox-label {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-    }
-
-    button {
-      background: black;
-      color: var(--text);
-      border: 1px solid var(--text);
-      padding: 10px 15px;
-      font-family: inherit;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 0.9rem;
-    }
-
-    button:hover {
-      background: var(--text);
-      color: black;
-      box-shadow: 0 0 15px var(--text);
-    }
-
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .modal-actions button {
-      flex: 1;
-      padding: 12px;
-      font-weight: bold;
-    }
-
-    .btn-secondary {
-      border-color: var(--dim);
-      color: var(--dim);
-    }
-
-    .btn-secondary:hover {
-      background: var(--dim);
-      color: black;
-    }
-
-    .sync-panel {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 350px;
-      background: black;
-      border: 2px solid var(--text);
-      padding: 15px;
-      z-index: 100;
-      box-shadow: 0 0 20px var(--text);
-    }
-
-    .sync-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 5px;
-    }
-
-    .sync-header h3 {
-      margin: 0;
-      font-size: 1rem;
-    }
-
-    .btn-small {
-      font-size: 0.7rem;
-      padding: 3px 8px;
-    }
-
-    .sync-content textarea {
-      width: 100%;
-      min-height: 100px;
-      margin-bottom: 10px;
-      font-size: 0.75rem;
-      font-family: monospace;
-    }
-
-    .sync-progress {
-      margin-top: 10px;
-    }
-
-    .progress-bar {
-      width: 100%;
-      height: 20px;
-      background: black;
-      border: 1px solid var(--text);
-      margin-bottom: 5px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: var(--text);
-      width: 0%;
-      transition: width 0.3s;
-      box-shadow: 0 0 10px var(--text);
-    }
-
-    #sync-status {
-      font-size: 0.8rem;
-      text-align: center;
-      color: var(--highlight);
-    }
-
-    #matrix-bg {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: -1;
-      opacity: 0.1;
-      pointer-events: none;
-    }
-  </style>
+        /* Modal (La Ficha) */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: black; border: 2px solid var(--matrix-green); width: 90%; max-width: 500px; padding: 20px; position: relative; box-shadow: 0 0 30px var(--dim-green); }
+        .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: var(--alert-red); }
+        
+        /* Form Elements */
+        label { display: block; margin-top: 10px; font-size: 12px; color: #88ff88; }
+        input, select, textarea { width: 100%; background: #002200; border: 1px solid var(--dim-green); color: white; padding: 8px; box-sizing: border-box; font-family: monospace; }
+        .vpd-display { font-size: 14px; margin-top: 5px; font-weight: bold; }
+        
+        /* Responsive */
+        @media (max-width: 768px) { .container { grid-template-columns: 1fr; height: auto; } .calendar-grid { grid-template-columns: repeat(4, 1fr); } }
+    </style>
 </head>
-
 <body>
 
-  <canvas id="matrix-bg"></canvas>
-
-  <header>
-    <h1>GrowOps v5.0</h1>
-    <span id="db-status" class="status-offline">[ FIREBASE: INIT... ]</span>
-    <div class="config-area">
-      <label>GERMINATION:</label>
-      <input type="date" id="germination-date">
-    </div>
-  </header>
-
-  <section class="calendar-section">
-    <div class="calendar-header">
-      <button id="prev-month">&lt;</button>
-      <span id="current-month-display">LOADING...</span>
-      <button id="next-month">&gt;</button>
-    </div>
-    <div class="calendar-grid" id="calendar-grid"></div>
-  </section>
-
-  <div class="modal-overlay" id="modal-overlay">
-    <div class="data-modal">
-      <div class="modal-header" id="modal-title">DAY REPORT</div>
-
-      <div class="modal-section">
-        <label>ENVIRONMENT</label>
-        <div class="input-row">
-          <div class="input-wrapper">
-            <span>TEMP (°C)</span>
-            <input type="number" id="modal-temp" placeholder="24" step="0.1">
-          </div>
-          <div class="input-wrapper">
-            <span>HUMIDITY (%)</span>
-            <input type="number" id="modal-rh" placeholder="60" step="1">
-          </div>
+    <header>
+        <div>
+            <h1>GROWOPS V5.0</h1>
+            <div style="font-size: 10px; opacity: 0.7;">SYSTEM: ONLINE | USER: ADMIN</div>
         </div>
-        <div id="vpd-display" class="vpd-display">VPD: -- kPa</div>
-      </div>
+        <div id="connection-status" class="status">CONNECTING...</div>
+    </header>
 
-      <div class="modal-section">
-        <label>LUX</label>
-        <input type="number" id="modal-lux" list="lux-presets" placeholder="TYPE OR SELECT">
-        <datalist id="lux-presets">
-          <option value="3000">SEEDLING: 3k</option>
-          <option value="5000">SEEDLING: 5k</option>
-          <option value="8000">SEEDLING: 8k</option>
-          <option value="10000">VEG: 10k</option>
-          <option value="11000">VEG: 11k</option>
-          <option value="12000">VEG: 12k</option>
-          <option value="13000">VEG: 13k</option>
-          <option value="14000">VEG: 14k</option>
-          <option value="15000">VEG: 15k</option>
-          <option value="18000">VEG: 18k</option>
-          <option value="20000">VEG: 20k</option>
-          <option value="25000">VEG: 25k</option>
-          <option value="30000">VEG: 30k</option>
-          <option value="40000">FLOWER: 40k</option>
-          <option value="45000">FLOWER: 45k</option>
-          <option value="50000">FLOWER: 50k</option>
-          <option value="60000">FLOWER: 60k</option>
-          <option value="70000">FLOWER: 70k</option>
-        </datalist>
-      </div>
-
-      <div class="modal-section">
-        <label>WATER (L)</label>
-        <div class="water-counter">
-          <button id="modal-add-water">+0.5L</button>
-          <span id="modal-water-display">0.0 L</span>
-          <button id="modal-reset-water" style="font-size:0.8rem;padding:5px;">RESET</button>
+    <div class="container">
+        <div class="calendar-wrapper">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <button class="btn-matrix" style="width:auto;" onclick="changeMonth(-1)">< PREV</button>
+                <h2 id="current-month" style="margin:0;">NOVEMBER 2025</h2>
+                <button class="btn-matrix" style="width:auto;" onclick="changeMonth(1)">NEXT ></button>
+            </div>
+            <div id="calendar" class="calendar-grid"></div>
         </div>
-      </div>
 
-      <div class="modal-section">
-        <label>NUTRIENTS</label>
-        <div class="checkbox-label">
-          <input type="checkbox" id="modal-root">
-          ROOT STIMULATOR
+        <div class="panel">
+            
+            <div class="panel-box">
+                <div class="panel-title">🔴 LIVE TELEMETRY</div>
+                <div id="live-telemetry">
+                    WAITING FOR ESP32...
+                </div>
+            </div>
+
+            <div class="panel-box">
+                <div class="panel-title">💾 OFFLINE SYNC</div>
+                <textarea id="json-injection" class="json-input" placeholder="Paste ESP32 JSON logs here..."></textarea>
+                <button class="btn-matrix" onclick="injectData()">INJECT FLIGHT LOG</button>
+            </div>
+
+            <div class="panel-box">
+                <div class="panel-title">ℹ️ SYSTEM INFO</div>
+                <div style="font-size: 10px;">
+                    GERMINATION: 22 NOV 2025<br>
+                    PHASE: VEGETATION<br>
+                    TARGET VPD: 0.8 - 1.1 kPa
+                </div>
+            </div>
         </div>
-        <div class="checkbox-label">
-          <input type="checkbox" id="modal-fert">
-          FERTILIZER
-        </div>
-      </div>
-
-      <div class="modal-section">
-        <label>NOTES</label>
-        <textarea id="modal-notes" placeholder="Observations..."></textarea>
-      </div>
-
-      <div class="modal-actions">
-        <button id="copy-yesterday-btn" class="btn-secondary">COPY YESTERDAY</button>
-        <button id="save-close-btn">SAVE & CLOSE</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="sync-panel" id="sync-panel">
-    <div class="sync-header">
-      <h3>OFFLINE SYNC</h3>
-      <button id="toggle-sync-btn" class="btn-small">HIDE</button>
     </div>
 
-    <div id="sync-content" class="sync-content">
-      <label>ESP32 FLIGHT LOG (JSON)</label>
-      <textarea id="flight-log-input" placeholder='[{"timestamp":"2024-11-24","temp":25.3,"rh":65.2}, ...]'></textarea>
-      <button id="inject-btn">INJECT DATA</button>
+    <div id="dataModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">×</span>
+            <h2 id="modal-date-title" style="border-bottom: 1px solid var(--matrix-green); padding-bottom:10px;">DAY REPORT</h2>
+            
+            <input type="hidden" id="selected-date-key">
 
-      <div id="sync-progress" class="sync-progress" style="display:none;">
-        <div class="progress-bar">
-          <div id="progress-fill" class="progress-fill"></div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div>
+                    <label>TEMP (°C)</label>
+                    <input type="number" id="input-temp" oninput="calculateVPD()">
+                </div>
+                <div>
+                    <label>HUMIDITY (%)</label>
+                    <input type="number" id="input-rh" oninput="calculateVPD()">
+                </div>
+            </div>
+            <div id="vpd-result" class="vpd-display">VPD: -- kPa</div>
+
+            <label>LIGHT (LUX)</label>
+            <input type="number" id="input-lux" list="lux-presets">
+            <datalist id="lux-presets">
+                <option value="5000">Seedling Low</option>
+                <option value="8000">Seedling High</option>
+                <option value="15000">Veg Early</option>
+                <option value="25000">Veg Late</option>
+                <option value="45000">Flower Start</option>
+                <option value="60000">Flower Peak</option>
+            </datalist>
+
+            <label>WATER (Liters)</label>
+            <div style="display:flex; gap:5px;">
+                <input type="number" id="input-water" step="0.1">
+                <button class="btn-matrix" style="width:50px;" onclick="addWater(0.5)">+0.5</button>
+            </div>
+
+            <label>NOTES</label>
+            <textarea id="input-notes" rows="3"></textarea>
+
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button class="btn-matrix" onclick="saveDayData()">SAVE DATA</button>
+            </div>
         </div>
-        <div id="sync-status">PROCESSING...</div>
-      </div>
     </div>
-  </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBzjkda5C3__QB8jglOQK79HDfvxVZ8iGQ",
-      authDomain: "grow-matrix.firebaseapp.com",
-      databaseURL: "https://grow-matrix-default-rtdb.firebaseio.com",
-      projectId: "grow-matrix",
-      storageBucket: "grow-matrix.firebasestorage.app",
-      messagingSenderId: "1004789173992",
-      appId: "1:1004789173992:web:0aa39431f84cd4937c435d"
-    };
+        // TUS CLAVES DE FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyBzjkda5C3__QB8jglOQK79HDfvxVZ8iGQ",
+            authDomain: "grow-matrix.firebaseapp.com",
+            databaseURL: "https://grow-matrix-default-rtdb.firebaseio.com",
+            projectId: "grow-matrix",
+            storageBucket: "grow-matrix.firebasestorage.app",
+            messagingSenderId: "1004789173992",
+            appId: "1:1004789173992:web:0aa39431f84cd4937c435d"
+        };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        let globalGrowData = {};
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
 
-    const STATE = {
-      germinationDate: null,
-      currentViewDate: new Date(),
-      selectedDate: null,
-      data: {}
-    };
+        // 1. CONEXIÓN Y ESCUCHA DE DATOS
+        const statusDiv = document.getElementById('connection-status');
+        const liveDiv = document.getElementById('live-telemetry');
 
-    const els = {
-      germinationInput: document.getElementById('germination-date'),
-      grid: document.getElementById('calendar-grid'),
-      monthDisplay: document.getElementById('current-month-display'),
-      prevBtn: document.getElementById('prev-month'),
-      nextBtn: document.getElementById('next-month'),
-      dbStatus: document.getElementById('db-status'),
-      modalOverlay: document.getElementById('modal-overlay'),
-      modalTitle: document.getElementById('modal-title'),
-      modalTemp: document.getElementById('modal-temp'),
-      modalRh: document.getElementById('modal-rh'),
-      vpdDisplay: document.getElementById('vpd-display'),
-      modalLux: document.getElementById('modal-lux'),
-      modalWaterDisplay: document.getElementById('modal-water-display'),
-      modalAddWaterBtn: document.getElementById('modal-add-water'),
-      modalResetWaterBtn: document.getElementById('modal-reset-water'),
-      modalRoot: document.getElementById('modal-root'),
-      modalFert: document.getElementById('modal-fert'),
-      modalNotes: document.getElementById('modal-notes'),
-      copyYesterdayBtn: document.getElementById('copy-yesterday-btn'),
-      saveCloseBtn: document.getElementById('save-close-btn'),
-      syncPanel: document.getElementById('sync-panel'),
-      toggleSyncBtn: document.getElementById('toggle-sync-btn'),
-      syncContent: document.getElementById('sync-content'),
-      flightLogInput: document.getElementById('flight-log-input'),
-      injectBtn: document.getElementById('inject-btn'),
-      syncProgress: document.getElementById('sync-progress'),
-      progressFill: document.getElementById('progress-fill'),
-      syncStatus: document.getElementById('sync-status')
-    };
+        // Escuchar Base de Datos Principal
+        onValue(ref(db, 'growData'), (snapshot) => {
+            statusDiv.textContent = "[ FIREBASE: ONLINE ]";
+            statusDiv.style.color = "#00FF41";
+            statusDiv.style.borderColor = "#00FF41";
+            globalGrowData = snapshot.val() || {};
+            renderCalendar();
+        }, (error) => {
+            statusDiv.textContent = "[ FIREBASE: ERROR ]";
+            statusDiv.style.color = "red";
+        });
 
-    function init() {
-      setupFirebaseListener();
-      renderCalendar();
-      setupEventListeners();
-      setupMatrixRain();
-    }
+        // Escuchar Telemetría en Vivo (ESP32)
+        onValue(ref(db, 'live_sensors'), (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                liveDiv.innerHTML = `
+                    <div style="font-size:30px; color:white;">${data.temp}°C</div>
+                    <div style="color:cyan;">${data.rh}% RH</div>
+                    <div style="font-size:12px; margin-top:5px; color:yellow;">⚡ ${data.lux} LUX</div>
+                `;
+            }
+        });
 
-    function setupFirebaseListener() {
-      const dbRef = ref(db, 'growData');
-      onValue(dbRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          STATE.germinationDate = data.germinationDate || null;
-          STATE.data = data.data || {};
-          if (STATE.germinationDate) els.germinationInput.value = STATE.germinationDate;
-          renderCalendar();
+        // 2. LÓGICA DEL CALENDARIO
+        window.changeMonth = (delta) => {
+            currentMonth += delta;
+            if(currentMonth > 11) { currentMonth = 0; currentYear++; }
+            if(currentMonth < 0) { currentMonth = 11; currentYear--; }
+            renderCalendar();
         }
-        els.dbStatus.innerText = "[ FIREBASE: ONLINE ]";
-        els.dbStatus.className = "status-online";
-      }, (error) => {
-        console.error(error);
-        els.dbStatus.innerText = "[ FIREBASE: ERROR ]";
-        els.dbStatus.className = "status-offline";
-        els.dbStatus.style.color = "red";
-      });
-    }
 
-    function saveData() {
-      const payload = {
-        germinationDate: STATE.germinationDate,
-        data: STATE.data
-      };
-      return set(ref(db, 'growData'), payload);
-    }
+        function renderCalendar() {
+            const calDiv = document.getElementById('calendar');
+            const monthTitle = document.getElementById('current-month');
+            calDiv.innerHTML = "";
+            
+            const date = new Date(currentYear, currentMonth, 1);
+            monthTitle.innerText = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
 
-    function calculateVPD(tempC, rh) {
-      if (!tempC || !rh || isNaN(tempC) || isNaN(rh)) {
-        return { vpd: null, status: 'unknown', color: '#555' };
-      }
-      const svp = 0.61078 * Math.exp((17.27 * tempC) / (tempC + 237.3));
-      const avp = svp * (rh / 100);
-      const vpd = svp - avp;
-      let status = 'OPTIMAL';
-      let color = '#00FF00';
-      if (vpd < 0.4 || vpd > 1.6) {
-        status = 'CRITICAL';
-        color = '#FF0000';
-      } else if (vpd < 0.8 || vpd > 1.2) {
-        status = 'WARNING';
-        color = '#FFFF00';
-      }
-      return { vpd: vpd.toFixed(2), status, color };
-    }
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const firstDayIndex = date.getDay(); // 0 = Sunday
 
-    function openModal(dateStr) {
-      STATE.selectedDate = dateStr;
-      let age = -1;
-      let ageText = "PRE-GERMINATION";
-      if (STATE.germinationDate) {
-        age = calculateAge(STATE.germinationDate, dateStr);
-        if (age >= 0) ageText = `DAY ${age}`;
-      }
-      els.modalTitle.innerText = `${ageText} REPORT - ${dateStr}`;
-      const dayData = STATE.data[dateStr] || { water: 0, root: false, fert: false, notes: '', temp: '', rh: '', lux: '' };
-      if (!STATE.data[dateStr]) {
-        STATE.data[dateStr] = { water: 0, root: false, fert: false, notes: '', temp: '', rh: '', lux: '' };
-      }
-      els.modalTemp.value = dayData.temp || '';
-      els.modalRh.value = dayData.rh || '';
-      els.modalLux.value = dayData.lux || '';
-      els.modalWaterDisplay.innerText = `${(dayData.water || 0).toFixed(1)} L`;
-      els.modalRoot.checked = dayData.root || false;
-      els.modalFert.checked = dayData.fert || false;
-      els.modalNotes.value = dayData.notes || '';
-      updateVPDDisplay();
-      els.modalOverlay.classList.add('active');
-    }
+            // Rellenar huecos vacíos antes del día 1
+            for(let i=0; i<firstDayIndex; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'day-cell';
+                empty.style.opacity = '0.3';
+                calDiv.appendChild(empty);
+            }
 
-    function closeModal() {
-      els.modalOverlay.classList.remove('active');
-      STATE.selectedDate = null;
-    }
+            // Pintar días
+            for(let i=1; i<=daysInMonth; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'day-cell';
+                const dayKey = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                
+                let content = `<div class="day-number">${i}</div>`;
+                
+                // Si hay datos, pintarlos
+                if(globalGrowData[dayKey]) {
+                    const d = globalGrowData[dayKey];
+                    content += `<div class="day-data">`;
+                    if(d.temp) content += `<div style="color:white;">🌡️ ${d.temp}° | 💧 ${d.rh}%</div>`;
+                    if(d.water) content += `<div style="color:cyan;">🚿 ${d.water}L</div>`;
+                    if(d.lux) content += `<div style="color:yellow;">⚡ ${d.lux}</div>`;
+                    if(d.notes) content += `<div style="color:#aaa;">📝 ...</div>`;
+                    content += `</div>`;
+                    
+                    // Borde rojo si VPD es peligroso (simple check)
+                    if(d.temp && d.rh) {
+                        // lógica simple de alerta visual
+                    }
+                }
 
-    function updateVPDDisplay() {
-      const temp = parseFloat(els.modalTemp.value);
-      const rh = parseFloat(els.modalRh.value);
-      const vpdResult = calculateVPD(temp, rh);
-      if (vpdResult.vpd) {
-        els.vpdDisplay.innerText = `VPD: ${vpdResult.vpd} kPa [${vpdResult.status}]`;
-        els.vpdDisplay.style.color = vpdResult.color;
-        els.vpdDisplay.style.borderColor = vpdResult.color;
-      } else {
-        els.vpdDisplay.innerText = "VPD: -- kPa";
-        els.vpdDisplay.style.color = '#555';
-        els.vpdDisplay.style.borderColor = '#030';
-      }
-    }
-
-    function saveAndClose() {
-      if (!STATE.selectedDate) return;
-      STATE.data[STATE.selectedDate].temp = els.modalTemp.value;
-      STATE.data[STATE.selectedDate].rh = els.modalRh.value;
-      STATE.data[STATE.selectedDate].lux = els.modalLux.value;
-      STATE.data[STATE.selectedDate].root = els.modalRoot.checked;
-      STATE.data[STATE.selectedDate].fert = els.modalFert.checked;
-      STATE.data[STATE.selectedDate].notes = els.modalNotes.value;
-      saveData();
-      renderCalendar();
-      closeModal();
-    }
-
-    function copyFromYesterday() {
-      if (!STATE.selectedDate) return;
-      const currentDate = new Date(STATE.selectedDate);
-      currentDate.setDate(currentDate.getDate() - 1);
-      const yesterdayStr = getFormattedDate(currentDate);
-      const yesterdayData = STATE.data[yesterdayStr];
-      if (yesterdayData) {
-        els.modalTemp.value = yesterdayData.temp || '';
-        els.modalRh.value = yesterdayData.rh || '';
-        els.modalLux.value = yesterdayData.lux || '';
-        STATE.data[STATE.selectedDate].water = yesterdayData.water || 0;
-        els.modalWaterDisplay.innerText = `${STATE.data[STATE.selectedDate].water.toFixed(1)} L`;
-        els.modalRoot.checked = yesterdayData.root || false;
-        els.modalFert.checked = yesterdayData.fert || false;
-        updateVPDDisplay();
-      } else {
-        alert('NO DATA FROM YESTERDAY');
-      }
-    }
-
-    async function injectFlightLog() {
-      const rawData = els.flightLogInput.value.trim();
-      if (!rawData) {
-        alert('NO DATA TO INJECT');
-        return;
-      }
-      try {
-        const logData = JSON.parse(rawData);
-        if (!Array.isArray(logData)) throw new Error('Data must be an array');
-        els.syncProgress.style.display = 'block';
-        const totalItems = logData.length;
-        let processed = 0;
-        for (const entry of logData) {
-          const { timestamp, temp, rh } = entry;
-          if (!timestamp) continue;
-          if (!STATE.data[timestamp]) {
-            STATE.data[timestamp] = { water: 0, root: false, fert: false, notes: '', temp: '', rh: '', lux: '' };
-          }
-          if (temp !== undefined) STATE.data[timestamp].temp = temp.toFixed(1);
-          if (rh !== undefined) STATE.data[timestamp].rh = rh.toFixed(1);
-          processed++;
-          const progress = (processed / totalItems) * 100;
-          els.progressFill.style.width = `${progress}%`;
-          els.syncStatus.innerText = `PROCESSING ${processed}/${totalItems}`;
-          await new Promise(resolve => setTimeout(resolve, 50));
+                cell.innerHTML = content;
+                cell.onclick = () => openModal(dayKey);
+                calDiv.appendChild(cell);
+            }
         }
-        await saveData();
+
+        // 3. MODAL & DATA ENTRY
+        window.openModal = (dateKey) => {
+            document.getElementById('dataModal').style.display = 'flex';
+            document.getElementById('modal-date-title').innerText = "REPORT: " + dateKey;
+            document.getElementById('selected-date-key').value = dateKey;
+
+            // Limpiar o cargar datos existentes
+            const d = globalGrowData[dateKey] || {};
+            document.getElementById('input-temp').value = d.temp || '';
+            document.getElementById('input-rh').value = d.rh || '';
+            document.getElementById('input-lux').value = d.lux || '';
+            document.getElementById('input-water').value = d.water || '';
+            document.getElementById('input-notes').value = d.notes || '';
+            calculateVPD();
+        }
+
+        window.closeModal = () => {
+            document.getElementById('dataModal').style.display = 'none';
+        }
+
+        window.saveDayData = () => {
+            const key = document.getElementById('selected-date-key').value;
+            const data = {
+                temp: document.getElementById('input-temp').value,
+                rh: document.getElementById('input-rh').value,
+                lux: document.getElementById('input-lux').value,
+                water: document.getElementById('input-water').value,
+                notes: document.getElementById('input-notes').value
+            };
+            
+            // Guardar en Firebase
+            update(ref(db, 'growData/' + key), data);
+            closeModal();
+        }
+
+        window.addWater = (amount) => {
+            const input = document.getElementById('input-water');
+            let val = parseFloat(input.value) || 0;
+            input.value = (val + amount).toFixed(1);
+        }
+
+        window.calculateVPD = () => {
+            const T = parseFloat(document.getElementById('input-temp').value);
+            const RH = parseFloat(document.getElementById('input-rh').value);
+            const div = document.getElementById('vpd-result');
+            
+            if(!T || !RH) { div.innerText = "VPD: --"; return; }
+
+            // Formula VPD
+            const svp = 0.61078 * Math.exp((17.27 * T) / (T + 237.3));
+            const vpd = svp * (1 - (RH / 100));
+            
+            div.innerText = `VPD: ${vpd.toFixed(2)} kPa`;
+            
+            if(vpd < 0.4 || vpd > 1.6) { div.style.color = "red"; }
+            else if(vpd >= 0.8 && vpd <= 1.2) { div.style.color = "#00FF41"; div.innerText += " (PERFECT)"; }
+            else { div.style.color = "yellow"; }
+        }
+
+        // 4. INYECCIÓN DE DATOS (OFFLINE SYNC)
+        window.injectData = () => {
+            const rawJson = document.getElementById('json-injection').value;
+            try {
+                const logs = JSON.parse(rawJson);
+                if(!Array.isArray(logs)) throw new Error("Format must be an array []");
+                
+                const updates = {};
+                logs.forEach(log => {
+                    // Asumimos formato log: {date: "2025-11-24", temp: 24, rh: 60...}
+                    if(log.date) {
+                        updates['growData/' + log.date + '/temp'] = log.temp;
+                        updates['growData/' + log.date + '/rh'] = log.rh;
+                        if(log.lux) updates['growData/' + log.date + '/lux'] = log.lux;
+                    }
+                });
+                
+                update(ref(db), updates);
+                alert("✅ INJECTION SUCCESSFUL: " + logs.length + " RECORDS");
+                document.getElementById('json-injection').value = "";
+                
+            } catch(e) {
+                alert("❌ ERROR: Invalid JSON format. " + e.message);
+            }
+        }
+
+        // Init Calendar
         renderCalendar();
-        els.syncStatus.innerText = `COMPLETE: ${processed} RECORDS INJECTED`;
-        els.syncStatus.style.color = '#0F0';
-        setTimeout(() => {
-          els.syncProgress.style.display = 'none';
-          els.progressFill.style.width = '0%';
-          els.flightLogInput.value = '';
-        }, 2000);
-      } catch (error) {
-        alert(`PARSE ERROR: ${error.message}`);
-        els.syncProgress.style.display = 'none';
-      }
-    }
-
-    function renderCalendar() {
-      els.grid.innerHTML = '';
-      const year = STATE.currentViewDate.getFullYear();
-      const month = STATE.currentViewDate.getMonth();
-      const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
-      els.monthDisplay.innerText = `${monthNames[month]} ${year}`;
-      const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-      days.forEach(d => {
-        const div = document.createElement('div');
-        div.className = 'day-name';
-        div.innerText = d;
-        els.grid.appendChild(div);
-      });
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      const daysInMonth = lastDay.getDate();
-      const startDayIndex = firstDay.getDay();
-      for (let i = 0; i < startDayIndex; i++) {
-        const div = document.createElement('div');
-        div.className = 'day-cell';
-        div.style.opacity = '0.3';
-        div.style.cursor = 'default';
-        els.grid.appendChild(div);
-      }
-      const todayStr = getFormattedDate(new Date());
-      for (let i = 1; i <= daysInMonth; i++) {
-        const dateObj = new Date(year, month, i);
-        const dateStr = getFormattedDate(dateObj);
-        const dayData = STATE.data[dateStr];
-        const cell = document.createElement('div');
-        cell.className = 'day-cell';
-        if (dateStr === todayStr) cell.classList.add('today');
-        const numDiv = document.createElement('div');
-        numDiv.className = 'date-number';
-        numDiv.innerText = i;
-        cell.appendChild(numDiv);
-        if (STATE.germinationDate) {
-          const age = calculateAge(STATE.germinationDate, dateStr);
-          if (age >= 0) {
-            const ageDiv = document.createElement('div');
-            ageDiv.className = 'plant-age';
-            ageDiv.innerText = `Day ${age}`;
-            cell.appendChild(ageDiv);
-          }
-        }
-        if (dayData) {
-          const summaryDiv = document.createElement('div');
-          summaryDiv.className = 'data-summary';
-          if (dayData.temp || dayData.rh) {
-            const envDiv = document.createElement('div');
-            envDiv.className = 'env';
-            const tempStr = dayData.temp ? `🌡️ ${dayData.temp}°` : '';
-            const rhStr = dayData.rh ? `💧 ${dayData.rh}%` : '';
-            envDiv.innerText = [tempStr, rhStr].filter(s => s).join(' | ');
-            summaryDiv.appendChild(envDiv);
-          }
-          if (dayData.water > 0) {
-            const waterDiv = document.createElement('div');
-            waterDiv.className = 'water';
-            waterDiv.innerText = `🚿 ${dayData.water.toFixed(1)}L`;
-            summaryDiv.appendChild(waterDiv);
-          }
-          if (dayData.lux) {
-            const luxDiv = document.createElement('div');
-            luxDiv.className = 'lux';
-            luxDiv.innerText = `⚡ ${dayData.lux}`;
-            summaryDiv.appendChild(luxDiv);
-          }
-          if (dayData.notes && dayData.notes.trim()) {
-            const notesDiv = document.createElement('div');
-            notesDiv.className = 'notes';
-            notesDiv.innerText = '📝';
-            summaryDiv.appendChild(notesDiv);
-          }
-          cell.appendChild(summaryDiv);
-          if (dayData.temp && dayData.rh) {
-            const vpdResult = calculateVPD(parseFloat(dayData.temp), parseFloat(dayData.rh));
-            cell.style.borderColor = vpdResult.color;
-          }
-        }
-        cell.onclick = () => openModal(dateStr);
-        els.grid.appendChild(cell);
-      }
-    }
-
-    function calculateAge(germDateStr, targetDateStr) {
-      const germ = new Date(germDateStr);
-      const target = new Date(targetDateStr);
-      germ.setHours(0, 0, 0, 0);
-      target.setHours(0, 0, 0, 0);
-      const diffTime = target - germ;
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    }
-
-    function getFormattedDate(date) {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    }
-
-    function setupEventListeners() {
-      els.prevBtn.onclick = () => {
-        STATE.currentViewDate.setMonth(STATE.currentViewDate.getMonth() - 1);
-        renderCalendar();
-      };
-      els.nextBtn.onclick = () => {
-        STATE.currentViewDate.setMonth(STATE.currentViewDate.getMonth() + 1);
-        renderCalendar();
-      };
-      els.germinationInput.onchange = (e) => {
-        STATE.germinationDate = e.target.value;
-        saveData();
-        renderCalendar();
-      };
-      els.modalTemp.oninput = updateVPDDisplay;
-      els.modalRh.oninput = updateVPDDisplay;
-      els.modalAddWaterBtn.onclick = () => {
-        if (!STATE.selectedDate) return;
-        STATE.data[STATE.selectedDate].water += 0.5;
-        els.modalWaterDisplay.innerText = `${STATE.data[STATE.selectedDate].water.toFixed(1)} L`;
-      };
-      els.modalResetWaterBtn.onclick = () => {
-        if (!STATE.selectedDate) return;
-        STATE.data[STATE.selectedDate].water = 0;
-        els.modalWaterDisplay.innerText = "0.0 L";
-      };
-      els.saveCloseBtn.onclick = saveAndClose;
-      els.copyYesterdayBtn.onclick = copyFromYesterday;
-      els.modalOverlay.onclick = (e) => {
-        if (e.target === els.modalOverlay) closeModal();
-      };
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && els.modalOverlay.classList.contains('active')) closeModal();
-      });
-      els.toggleSyncBtn.onclick = () => {
-        const isVisible = els.syncContent.style.display !== 'none';
-        els.syncContent.style.display = isVisible ? 'none' : 'block';
-        els.toggleSyncBtn.innerText = isVisible ? 'SHOW' : 'HIDE';
-      };
-      els.injectBtn.onclick = injectFlightLog;
-    }
-
-    function setupMatrixRain() {
-      const canvas = document.getElementById('matrix-bg');
-      const ctx = canvas.getContext('2d');
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      const chars = '01';
-      const fontSize = 14;
-      const columns = canvas.width / fontSize;
-      const drops = [];
-      for (let x = 0; x < columns; x++) drops[x] = 1;
-      function draw() {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#0F0';
-        ctx.font = fontSize + 'px monospace';
-        for (let i = 0; i < drops.length; i++) {
-          const text = chars.charAt(Math.floor(Math.random() * chars.length));
-          ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-          if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-          drops[i]++;
-        }
-      }
-      setInterval(draw, 50);
-      window.onresize = () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      };
-    }
-
-    init();
-  </script>
+    </script>
 </body>
-
 </html>
